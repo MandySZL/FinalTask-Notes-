@@ -1,27 +1,65 @@
-using Android.Graphics.Drawables;
-using static Android.Icu.Text.CaseMap;
+namespace Notes.Views
+{
+    [QueryProperty(nameof(ItemId), nameof(ItemId))]
+    public partial class NotePage : ContentPage
+    {
+        public string ItemId
+        {
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    LoadNote(value);
+                }
+            }
+        }
 
-<? xml version = "1.0" encoding = "UTF-8" ?>;
-< Shell
-    x:Class = "Notes.AppShell";
-xmlns = "http://schemas.microsoft.com/dotnet/2021/maui";
-xmlns: x = "http://schemas.microsoft.com/winfx/2009/xaml";
-xmlns: local = "clr-namespace:Notes.Views";
+        public NotePage()
+        {
+            InitializeComponent();
+            BindingContext = new Models.Notes();
+        }
 
-Title title = Title;
+        void LoadNote(string fileName)
+        {
+            var note = new Models.Notes
+            {
+                Filename = fileName,
+                Text = File.Exists(fileName) ? File.ReadAllText(fileName) : string.Empty,
+                Date = File.Exists(fileName) ? File.GetLastWriteTime(fileName) : DateTime.Now
+            };
 
-title = "Notes" >;
+            BindingContext = note;
+        }
 
-    < TabBar >
-        < ShellContent>
-            Title = "Notes";
-            ContentTemplate = "{DataTemplate local:AllNotesPage}";
-            Icon = "{OnPlatform 'icon_notes.png', iOS='icon_notes_ios.png', MacCatalyst='icon_notes_ios.png'}" />
+        async void SaveButton_Clicked(object sender, EventArgs e)
+        {
+            var note = (Models.Notes)BindingContext;
 
-        < ShellContent>
-            Title = "About";
-            ContentTemplate = "{DataTemplate local:AboutPage}"
-            Icon = "{OnPlatform 'icon_about.png', iOS='icon_about_ios.png', MacCatalyst='icon_about_ios.png'}" />
-    </ TabBar >;
+            if (string.IsNullOrWhiteSpace(note.Filename))
+            {
+                string appDataPath = FileSystem.AppDataDirectory;
+                string fileName = Path.Combine(appDataPath, $"{Path.GetRandomFileName()}.notes.txt");
+                File.WriteAllText(fileName, note.Text ?? string.Empty);
+            }
+            else
+            {
+                File.WriteAllText(note.Filename, note.Text ?? string.Empty);
+            }
 
-</ Shell >;
+            await Shell.Current.GoToAsync("..");
+        }
+
+        async void DeleteButton_Clicked(object sender, EventArgs e)
+        {
+            var note = (Models.Notes)BindingContext;
+
+            if (!string.IsNullOrWhiteSpace(note.Filename) && File.Exists(note.Filename))
+            {
+                File.Delete(note.Filename);
+            }
+
+            await Shell.Current.GoToAsync("..");
+        }
+    }
+}
